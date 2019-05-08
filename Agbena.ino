@@ -11,7 +11,7 @@ const long  gmtOffset_sec = 0;
 const int   daylightOffset_sec = 3600;
 
 String date;
-// Definition of delay varialbles
+// Definition of delay varialbles 
 static const uint32_t DELAY_1_S = 1000UL;
 static const uint32_t DELAY_1_MIN = 60UL * DELAY_1_S;
 static const uint32_t DELAY_1_30MIN = 30UL * DELAY_1_MIN;
@@ -25,7 +25,7 @@ int INTERVAL_READING = 50;
 int INTERVAL_READING_TIME_SPACING = 100;
 
 //MQ sensor pin definitions 
-#define SENSORTHRES 2500
+#define SENSORTHRES 2000
 #define   mq2_pin   39    
 int mqState;
 
@@ -37,12 +37,14 @@ float O2;
 bool O2_init_flag = 0;          
 float calibration_voltage; 
 
-// Date Library predefinitions
+// LED pin numbers
 
-// Variables to save date and time
-String formattedDate;
-String dayStamp;
+#define redPin 18
+#define greenPin 19
 
+// Buzzer pin declaration
+
+#define buzzer 12
 
 char serverAddress[] = "https://old-backend.herokuapp.com/old/data";  
 
@@ -54,18 +56,24 @@ void setup() {
     Serial.println();
     Serial.println();
 
+    // Initializing LED pins
+    pinMode(redPin, OUTPUT);
+    pinMode(greenPin, OUTPUT);
+
+    // Buzzer initialization
+    pinMode(buzzer,OUTPUT);
+
     for(uint8_t t = 4; t > 0; t--) {
         Serial.printf("[SETUP] WAIT %d...\n", t);
         Serial.flush();
         delay(1000);
     }
 
-    wifiMulti.addAP("BEKs", "alelepof");
+    wifiMulti.addAP("PHYSICAL_SCI_WIFI_FL_1", " ");
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
     wifiMulti.run();
     http.begin(serverAddress);
     Serial.println("Connecting to web server......."); 
-//    printLocalTime();
 }
 
 void loop() {
@@ -76,7 +84,7 @@ void loop() {
     postData(oxy,mq);    
     Serial.println("making POST request.....");
     }
-        
+    Serial.println("Delaying for 30mins until next post request.");  
     delay(DELAY_1_30MIN);
 }
 
@@ -93,11 +101,14 @@ int readMQ(){
      int checkMQ(){ 
         if(mqIntervalReading() < SENSORTHRES){
             mqState = 0;
-            return mqState;
+            digitalWrite(greenPin, HIGH);
+            
+            
         }
         else{
           mqState = 1;
-
+          digitalWrite(redPin, HIGH);
+          digitalWrite(buzzer, HIGH);
         }
       return mqState;
      }
@@ -145,8 +156,6 @@ String getMqState(int mqState){
   String myUse = String(mqState);
   return myUse;
   }
-
-
 
 // interval Reading function definitions
 
@@ -210,7 +219,8 @@ void postData(String oxyVal, String mqState){
       {
           Serial.println("Data could not be posted.");
           Serial.println("Response received:");
-          Serial.println(statusCode);
+          Serial.println(response);
+          Serial.println("Reposting data again");
           statusCode = http.POST(JsonMessageBuffer);
               
       }
@@ -219,7 +229,3 @@ void postData(String oxyVal, String mqState){
       Serial.println(response);
       http.end();
   }
-
-      
- 
-  
